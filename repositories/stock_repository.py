@@ -113,3 +113,25 @@ def calcular_media_movil(db: Session, ticker: str, window_size: int):
         for fecha, precio, valor_sma in zip(fechas, precios_cierre, sma)
     ]
     return resultado
+
+
+import math
+
+
+def calcular_volatilidad_anualizada(db: Session, ticker: str):
+    registros = (
+        db.query(StockDailyPrice.daily_return)
+        .filter(StockDailyPrice.ticker == ticker, StockDailyPrice.daily_return.isnot(None))
+        .all()
+    )
+
+    retornos = [r[0] for r in registros]
+
+    if len(retornos) < 2:
+        return None
+
+    serie = pd.Series(retornos)
+    desviacion_diaria = serie.std()
+    volatilidad_anualizada = desviacion_diaria * math.sqrt(252)
+
+    return volatilidad_anualizada
