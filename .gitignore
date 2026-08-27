@@ -3,4 +3,5 @@ __pycache__/
 venv/
 .env
 *.db
+etl_log.jsonl
 .pytest_cache/

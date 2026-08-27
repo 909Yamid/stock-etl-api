@@ -1,5 +1,7 @@
 import yfinance as yf
 import pandas as pd
+import json
+
 
 from datetime import datetime, timedelta
 
@@ -69,8 +71,21 @@ def limpiar_y_validar(datos: pd.DataFrame, ticker: str):
 
     return datos_limpios, log_eventos
 
+def guardar_log_en_archivo(log_eventos: list):
+    if not log_eventos:
+        return
+
+    with open("etl_log.jsonl", "a", encoding="utf-8") as archivo:
+        for evento in log_eventos:
+            evento_con_fecha = dict(evento)
+            evento_con_fecha["timestamp"] = datetime.now().isoformat()
+            archivo.write(json.dumps(evento_con_fecha, ensure_ascii=False) + "\n")
+
+
 
 def calcular_retorno_diario(datos: pd.DataFrame):
     # Daily Return = (Close_t - Close_t-1) / Close_t-1
     datos["daily_return"] = datos["Close"].pct_change()
     return datos
+
+

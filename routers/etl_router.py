@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from models.database import obtener_sesion
-from services.etl_service import extraer_datos_historicos, limpiar_y_validar, calcular_retorno_diario
+from services.etl_service import extraer_datos_historicos, limpiar_y_validar, guardar_log_en_archivo, calcular_retorno_diario
 from repositories.stock_repository import guardar_ticker_si_no_existe, guardar_precios_diarios
 from datetime import date
 
@@ -24,6 +24,7 @@ def sincronizar(tickers: list[str], fecha_inicio: date, fecha_fin: date, db: Ses
             continue
 
         datos_limpios, log_eventos = limpiar_y_validar(datos_crudos, ticker)
+        guardar_log_en_archivo(log_eventos)
         datos_final = calcular_retorno_diario(datos_limpios)
 
         guardar_ticker_si_no_existe(db, ticker)

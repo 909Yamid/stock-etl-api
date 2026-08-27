@@ -56,3 +56,22 @@ def test_calcula_retorno_diario_correctamente():
 
     assert abs(resultado["daily_return"].iloc[1] - 0.1) < 0.0001
     assert pd.isna(resultado["daily_return"].iloc[0])
+
+from services.etl_service import guardar_log_en_archivo
+
+
+def test_log_se_escribe_en_archivo(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    log_eventos = [
+        {"ticker": "PRUEBA", "fecha": "2026-01-01", "tipo": "fila_descartada", "campo": None, "motivo": "Low mayor que High"}
+    ]
+
+    guardar_log_en_archivo(log_eventos)
+
+    archivo_generado = tmp_path / "etl_log.jsonl"
+    assert archivo_generado.exists()
+
+    contenido = archivo_generado.read_text(encoding="utf-8")
+    assert "Low mayor que High" in contenido
+    assert "PRUEBA" in contenido
