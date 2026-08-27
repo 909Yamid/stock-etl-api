@@ -1,13 +1,17 @@
 import yfinance as yf
 import pandas as pd
 
+from datetime import datetime, timedelta
 
 def extraer_datos_historicos(ticker: str, fecha_inicio: str, fecha_fin: str):
+    # Arquitectura, yfinance trata 'end' como exclusivo, sumamos 1 dia para que el rango que pide el usuario sea inclusivo de ambos extremos
+    fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d") + timedelta(days=1)
+    fecha_fin_ajustada = fecha_fin_dt.strftime("%Y-%m-%d")
 
     datos = yf.download(
         ticker,
         start=fecha_inicio,
-        end=fecha_fin,
+        end=fecha_fin_ajustada,
         progress=False,
     )
     if isinstance(datos.columns, pd.MultiIndex):
