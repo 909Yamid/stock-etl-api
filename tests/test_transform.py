@@ -75,3 +75,43 @@ def test_log_se_escribe_en_archivo(tmp_path, monkeypatch):
     contenido = archivo_generado.read_text(encoding="utf-8")
     assert "Low mayor que High" in contenido
     assert "PRUEBA" in contenido
+
+
+from unittest.mock import patch
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from models.database import Base
+from services.etl_service import ejecutar_pipeline_etl
+
+
+def test_sync_es_idempotente():
+    
+    from models import stock_models  
+    from sqlalchemy.pool import StaticPool
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    SesionPrueba = sessionmaker(bind=engine)
+    db = SesionPrueba()
+
+    datos_falsos = pd.DataFrame({
+        "Open": [100.0, 101.0],
+        "High": [105.0, 106.0],
+        "Low": [99.0, 100.0],
+        "Close": [102.0, 103.0],
+        "Volume": [1000, 1100],
+    }, index=pd.to_datetime(["2026-01-01", "2026-01-02"]))
+
+    with patch("services.etl_service.yf.download", return_value=datos_falsos):
+        resultado_1 = ejecutar_pipeline_etl("AAPL", "2026-01-01", "2026-01-02", db)
+        resultado_2 = ejecutar_pipeline_etl("AAPL", "2026-01-01", "2026-01-02", db)
+
+    from models.stock_models import StockDailyPrice
+    total_filas = db.query(StockDailyPrice).count()
+
+    assert resultado_1["filas_guardadas"] == 2
+    assert resultado_2["filas_guardadas"] == 2
+    assert total_filas == 2  # no se duplico al correr dos veces
