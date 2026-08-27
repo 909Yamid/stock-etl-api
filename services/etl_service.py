@@ -44,6 +44,20 @@ def limpiar_y_validar(datos: pd.DataFrame, ticker: str):
                 })
             datos[columna] = datos[columna].ffill()
 
+    # revalidar: si el primer dia tenia nulo, ffill no tuvo nada de donde copiar
+    for columna in columnas_clave:
+        nulos_restantes = datos[columna].isna()
+        if nulos_restantes.any():
+            for fecha_nula in datos.index[nulos_restantes]:
+                log_eventos.append({
+                    "ticker": ticker,
+                    "fecha": str(fecha_nula.date()),
+                    "tipo": "fila_descartada",
+                    "campo": columna,
+                    "motivo": "nulo sin dato previo para forward-fill (probablemente primer dia)",
+                })
+            datos = datos[~nulos_restantes]
+
     # inconsistencias matematicas
     filas_validas = []
     for fecha, fila in datos.iterrows():

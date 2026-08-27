@@ -6,69 +6,37 @@
 
 
 
-\### a) En este proyecto, la capa de service no sabe si los datos vienen de yfinance, de un CSV, o de otra fuente, la función extraer\_datos\_historicos recibe un ticker y fechas, y devuelve datos ya en un formato esperado, entonces si mañana Yahoo Finance cambia su forma de responder, o decido usar otra fuente de datos, solo tendría que cambiar esa función puntual, sin tocar la lógica de limpieza ni el repository que guarda en SQLite
+\### a) Revisando mi propia implementación con mas cuidado, note que aunque separe la extraccion en una funcion propia (extraer_datos_historicos), el service sigue importando y llamando directamente a yf.download(...), entonces en realidad no hay una inversion de dependencias real, solo una organizacion mas limpia del codigo. El service todavia depende de la implementacion concreta de Yahoo Finance, no de una abstraccion.
 
+Una aplicacion real de DIP seria definir una interfaz (un contrato) que el service conozca, sin importar la fuente concreta:
 
+```python
+from abc import ABC, abstractmethod
 
-En un desarrollo anterior (un bot que traduje de una macro VBA a Python, para categorizar transacciones de mvtos bancarios) ya apliqué esta misma separación en código real. La macro original detectaba comisiones bancarias por palabra clave ("comision") o por un monto fijo (19.43 USD), y llenaba automáticamente la categoría "Gtos Financieros". Al traducirlo a Python, separé la función de categorización de la función que lee o adecúa el archivo de origen:
+class ProveedorDeDatos(ABC):
+    @abstractmethod
+    def obtener_precios(self, ticker, fecha_inicio, fecha_fin):
+        pass
 
+class ProveedorYahooFinance(ProveedorDeDatos):
+    def obtener_precios(self, ticker, fecha_inicio, fecha_fin):
+        import yfinance as yf
+        return yf.download(ticker, start=fecha_inicio, end=fecha_fin)
 
+class ProveedorBaseDatos(ProveedorDeDatos):
+    def obtener_precios(self, ticker, fecha_inicio, fecha_fin):
+        # aqui consultaria una base de datos relacional en vez de una API externa
+        pass
 
+# el service recibe CUALQUIER proveedor que cumpla el contrato, sin saber cual es
+def ejecutar_etl(proveedor: ProveedorDeDatos, ticker, fecha_inicio, fecha_fin):
+    datos = proveedor.obtener_precios(ticker, fecha_inicio, fecha_fin)
+    # la logica de limpieza y calculo no cambia sin importar el proveedor
 ```
 
-def aplicar\_categorizacion(df: pd.DataFrame) -> pd.DataFrame:
+Con esto, si mañana cambio de Yahoo Finance a otra fuente, o quiero leer de una base de datos en vez de una API, solo creo un nuevo ProveedorX que cumpla el contrato, sin tocar la logica de negocio. En mi implementacion actual de este proyecto, esto seria una mejora pendiente: el service (etl_service.py) todavia importa yfinance directamente, en vez de recibir un proveedor abstracto.
 
-&#x20;   """
-
-&#x20;   Detecta comisiones por nombre o monto fijo y rellena
-
-&#x20;   Categoria y Doc.Comp. con 'Gtos Financieros'.
-
-&#x20;   """
-
-&#x20;   if "Categoria" not in df.columns:
-
-&#x20;       df\["Categoria"] = ""
-
-&#x20;   if "Doc.Comp." not in df.columns:
-
-&#x20;       df\["Doc.Comp."] = ""
-
-
-
-&#x20;   for idx, fila in df.iterrows():
-
-&#x20;       nombre\_txt = str(fila.get("Nombre", "")).lower().strip()
-
-&#x20;       valor\_num = abs(float(str(fila.get("ValorUSD", 0)).replace(",", ".")))
-
-
-
-&#x20;       es\_comision = (
-
-&#x20;           "comision" in nombre\_txt or
-
-&#x20;           abs(valor\_num - 19.43) < 0.01
-
-&#x20;       )
-
-
-
-&#x20;       if es\_comision:
-
-&#x20;           df.at\[idx, "Categoria"] = "Gtos Financieros"
-
-&#x20;           df.at\[idx, "Doc.Comp."] = "Gtos Financieros"
-
-
-
-&#x20;   return df
-
-```
-
-
-
-Esta función no le importa si el DataFrame vino de un extracto de Bancolombia, BTG o Citi, ni cómo se leyó el archivo original, solo recibe una tabla ya normalizada y decide la categoría. Eso es lo mismo que busca el DIP: la lógica de negocio, en este caso categorizar, no depende de la fuente de datos, es decir, del banco o el formato del archivo. Y aplicando la misma idea a este proyecto de la prueba: si mañana necesito traer los precios desde otra fuente distinta a Yahoo Finance, solo tocaría la función de extracción, la lógica de limpieza y cálculo seguiría intacta
+Ya habia aplicado una version mas simple de esta idea antes, sin llamarla DIP: en un bot de categorizacion que traduje de una macro VBA a Python, separe la funcion que categoriza transacciones de la funcion que lee el archivo de origen, para que la logica de categorizacion no dependiera del formato del banco.
 
 
 
