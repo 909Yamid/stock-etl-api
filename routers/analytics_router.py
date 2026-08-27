@@ -14,6 +14,9 @@ def resumen_analitico(db: Session = Depends(obtener_sesion)):
 
 @router.get("/analytics/movingaverage")
 def media_movil(ticker: str, window_size: int, db: Session = Depends(obtener_sesion)):
+    if window_size <= 0:
+        raise HTTPException(status_code=400, detail="window_size debe ser mayor a 0")
+
     resultado = calcular_media_movil(db, ticker, window_size)
 
     if resultado is None:

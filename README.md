@@ -56,7 +56,12 @@ Correr con:
 pytest -v
 ```
 
-Cubren la capa de transformacion (forward-fill, validacion de inconsistencias, calculo de retorno diario, escritura de logs) y la capa de extraccion (con mock de yfinance, sin llamadas de red reales).
+Incluye:
+- Transformacion: forward-fill, validacion de inconsistencias (Low>High, Volume negativo, precio<=0), calculo de retorno diario
+- Extraccion: mock de yfinance, sin llamadas de red reales
+- Pipeline ETL completo: extract-transform-load en una sola prueba, con Yahoo mockeado
+- Idempotencia: sync ejecutado dos veces no duplica filas
+- API: fecha invertida devuelve 400, ticker sin datos devuelve 404
 
 ## Documentacion adicional
 

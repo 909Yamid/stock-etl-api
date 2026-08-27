@@ -16,6 +16,10 @@ def sincronizar(tickers: list[str], fecha_inicio: date, fecha_fin: date, db: Ses
     for ticker in tickers:
         resultado[ticker.upper()] = ejecutar_pipeline_etl(ticker, str(fecha_inicio), str(fecha_fin), db)
 
+    hubo_error = any("error" in r for r in resultado.values())
+    if hubo_error and len(tickers) == 1:
+        raise HTTPException(status_code=404, detail=f"no se encontraron datos para: {tickers[0]}")
+
     return resultado
 
 
