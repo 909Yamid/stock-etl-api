@@ -103,3 +103,21 @@ def calcular_retorno_diario(datos: pd.DataFrame):
     return datos
 
 
+def ejecutar_pipeline_etl(ticker: str, fecha_inicio: str, fecha_fin: str, db):
+    from repositories.stock_repository import guardar_ticker_si_no_existe, guardar_precios_diarios
+
+    ticker = ticker.upper()
+    datos_crudos = extraer_datos_historicos(ticker, fecha_inicio, fecha_fin)
+
+    if datos_crudos.empty:
+        return {"error": "no se encontraron datos para ese ticker/rango"}
+
+    datos_limpios, log_eventos = limpiar_y_validar(datos_crudos, ticker)
+    guardar_log_en_archivo(log_eventos)
+    datos_final = calcular_retorno_diario(datos_limpios)
+
+    guardar_ticker_si_no_existe(db, ticker)
+    filas_guardadas = guardar_precios_diarios(db, ticker, datos_final)
+
+    return {"filas_guardadas": filas_guardadas, "eventos_log": log_eventos}
+
